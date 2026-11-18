@@ -15,7 +15,7 @@ load_dotenv()
 # splitting cleanly across adjacent chunk boundaries.
 DEFAULT_CHUNK_SIZE = 1800
 DEFAULT_CHUNK_OVERLAP = 200
-VALID_STRATEGIES = frozenset({"structural", "late", "context_aware"})
+VALID_STRATEGIES = frozenset({"structural", "late"})
 
 
 @dataclass(frozen=True)
