@@ -225,3 +225,5 @@ __marimo__/
 data/chroma/
 .chroma/
 chroma_db/
+
+main.tex
