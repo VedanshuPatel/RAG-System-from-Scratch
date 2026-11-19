@@ -227,3 +227,6 @@ data/chroma/
 chroma_db/
 
 main.tex
+
+data/chroma_smoke/
+data/chroma/
