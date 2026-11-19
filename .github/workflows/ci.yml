@@ -24,6 +24,11 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
+      - name: Ingest corpus
+        env:
+          CHUNKING_STRATEGY: structural
+        run: python scripts/ingest.py
+
       - name: Run tests
         env:
           CHUNKING_STRATEGY: structural
