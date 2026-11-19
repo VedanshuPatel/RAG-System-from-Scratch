@@ -230,3 +230,6 @@ main.tex
 
 data/chroma_smoke/
 data/chroma/
+
+# macOS
+.DS_Store
