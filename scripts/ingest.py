@@ -1,6 +1,5 @@
 """Chunk policy docs and store embeddings in Chroma."""
 
-from pathlib import Path
 
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
@@ -18,7 +17,7 @@ def main() -> None:
 
     try:
         client.delete_collection(settings.collection_name)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     collection = client.create_collection(

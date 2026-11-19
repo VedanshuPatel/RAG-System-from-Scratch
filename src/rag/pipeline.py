@@ -81,7 +81,7 @@ def ask(question: str, settings: Settings | None = None) -> tuple[str, list[dict
             "Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT"
         )
 
-    ids, docs, metas = retrieve(question, settings)
+    _ids, docs, metas = retrieve(question, settings)
 
     context = "\n\n".join(
         f"[{i+1}] ({m['document_name']} § {m.get('section', 'body')})\n{d}"

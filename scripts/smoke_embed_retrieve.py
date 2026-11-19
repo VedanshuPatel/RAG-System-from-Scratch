@@ -19,7 +19,7 @@ def main() -> None:
 
     try:
         client.delete_collection("smoke")
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     collection = client.create_collection(name="smoke", embedding_function=embed_fn)
 

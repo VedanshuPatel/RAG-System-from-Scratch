@@ -1,7 +1,7 @@
-import pytest
 from pathlib import Path
 
 import chromadb
+import pytest
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 

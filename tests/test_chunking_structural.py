@@ -1,6 +1,5 @@
 from rag.chunking.structural import structural_chunk
 
-
 SAMPLE = """# Remote Work Policy
 
 ## Eligibility

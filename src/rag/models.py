@@ -18,7 +18,7 @@ class Chunk:
     end_char: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def with_id(self, chunk_id: str) -> "Chunk":
+    def with_id(self, chunk_id: str) -> Chunk:
         self.chunk_id = chunk_id
         return self
 

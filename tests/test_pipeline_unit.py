@@ -2,8 +2,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-
 from conftest import make_settings
+
 from rag import pipeline
 
 
@@ -53,7 +53,7 @@ def test_rerank_orders_by_score(monkeypatch):
             return [2.0 if "best" in p[1] else 0.1 for p in pairs]
 
     monkeypatch.setattr(pipeline, "CrossEncoder", FakeCE)
-    ids, docs, metas = pipeline.rerank(
+    ids, docs, _metas = pipeline.rerank(
         "q",
         ["1", "2"],
         ["worst text", "best text"],
@@ -140,7 +140,7 @@ def test_retrieve_wires_hybrid_and_rerank(monkeypatch):
             [{"document_name": "b.md"}],
         ),
     )
-    ids, docs, metas = pipeline.retrieve("q", settings=s)
+    ids, docs, _metas = pipeline.retrieve("q", settings=s)
     assert ids == ["2"]
     assert docs == ["d2"]
 
