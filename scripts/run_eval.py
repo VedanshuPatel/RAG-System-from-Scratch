@@ -3,6 +3,7 @@
 import os
 
 from eval_cases import CASES
+
 from rag.pipeline import ask, retrieve
 
 

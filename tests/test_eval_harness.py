@@ -1,9 +1,9 @@
 import os
 
 import pytest
+from eval_cases import CASES
 
 from rag.pipeline import ask, retrieve
-from eval_cases import CASES
 
 
 def _keys_present(text: str, keys: list[str]) -> bool:
