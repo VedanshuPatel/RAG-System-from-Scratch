@@ -28,4 +28,4 @@ jobs:
         env:
           CHUNKING_STRATEGY: structural
           RUN_LIVE: "0"
-        run: pytest -q -m "not slow and not live"
+        run: pytest -q -m "not live"
