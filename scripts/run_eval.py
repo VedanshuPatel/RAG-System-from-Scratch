@@ -32,7 +32,13 @@ def main() -> None:
     print("\n=== Generator answer accuracy (key facts) ===")
     for case in CASES:
         answer, _sources = ask(case["question"])
-        ok = all(k.lower() in answer.lower() for k in case["expected_answer_keys"])
+        lower = answer.lower()
+        ok = True
+        for k in case["expected_answer_keys"]:
+            alts = [a.strip().lower() for a in k.split("|")]
+            if not any(a in lower for a in alts):
+                ok = False
+                break
         answer_hits += int(ok)
         print(f"{'PASS' if ok else 'FAIL'} {case['id']}: keys={case['expected_answer_keys']}")
 
