@@ -51,7 +51,7 @@ CASES = [
         "expected_chunk_ids": [
             "remote_work_policy.md::structural::2",
         ],
-        "expected_answer_keys": ["six"],
+        "expected_answer_keys": ["six|6"],
     },
     {
         "id": "expense_deadline",

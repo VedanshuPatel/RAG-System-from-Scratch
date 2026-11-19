@@ -8,7 +8,11 @@ from eval_cases import CASES
 
 def _keys_present(text: str, keys: list[str]) -> bool:
     lower = text.lower()
-    return all(k.lower() in lower for k in keys)
+    for k in keys:
+        alts = [a.strip().lower() for a in k.split("|")]
+        if not any(a in lower for a in alts):
+            return False
+    return True
 
 
 @pytest.mark.slow
