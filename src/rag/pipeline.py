@@ -42,8 +42,20 @@ def retrieve_hybrid(collection, question: str, candidate_n: int):
 def rerank(question, ids, docs, metas, model_name: str, top_k: int):
     reranker = CrossEncoder(model_name)
     scores = reranker.predict([[question, doc] for doc in docs])
-    ranked = sorted(zip(ids, docs, metas, scores), key=lambda x: float(x[3]), reverse=True)[:top_k]
+    ranked = sorted(
+        zip(ids, docs, metas, scores), key=lambda x: float(x[3]), reverse=True
+    )[:top_k]
     return [x[0] for x in ranked], [x[1] for x in ranked], [x[2] for x in ranked]
+
+
+def retrieve(question: str, settings: Settings | None = None):
+    """Hybrid + rerank. Shared by ask() and eval tests."""
+    settings = settings or get_settings()
+    collection = get_collection(settings)
+    ids, docs, metas = retrieve_hybrid(collection, question, settings.candidate_n)
+    return rerank(
+        question, ids, docs, metas, settings.cross_encoder_model, settings.top_k
+    )
 
 
 def _answer_text(response) -> str:
@@ -65,13 +77,11 @@ def ask(question: str, settings: Settings | None = None) -> tuple[str, list[dict
         and settings.azure_openai_api_key
         and settings.azure_openai_deployment
     ):
-        raise RuntimeError("Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT")
+        raise RuntimeError(
+            "Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT"
+        )
 
-    collection = get_collection(settings)
-    ids, docs, metas = retrieve_hybrid(collection, question, settings.candidate_n)
-    ids, docs, metas = rerank(
-        question, ids, docs, metas, settings.cross_encoder_model, settings.top_k
-    )
+    ids, docs, metas = retrieve(question, settings)
 
     context = "\n\n".join(
         f"[{i+1}] ({m['document_name']} § {m.get('section', 'body')})\n{d}"
