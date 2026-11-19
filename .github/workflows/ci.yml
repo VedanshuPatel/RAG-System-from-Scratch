@@ -32,5 +32,8 @@ jobs:
       - name: Run tests
         env:
           CHUNKING_STRATEGY: structural
-          RUN_LIVE: "0"
-        run: pytest -q -m "not live"
+          RUN_LIVE: "1"
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: pytest -q
