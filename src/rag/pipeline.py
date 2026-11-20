@@ -58,6 +58,43 @@ def retrieve(question: str, settings: Settings | None = None):
     )
 
 
+def _require_azure(settings: Settings) -> None:
+    if not (
+        settings.azure_openai_endpoint
+        and settings.azure_openai_api_key
+        and settings.azure_openai_deployment
+    ):
+        raise RuntimeError(
+            "Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT"
+        )
+
+
+def _build_context(docs: list[str], metas: list[dict]) -> str:
+    return "\n\n".join(
+        f"[{i+1}] ({m['document_name']} § {m.get('section', 'body')})\n{d}"
+        for i, (d, m) in enumerate(zip(docs, metas))
+    )
+
+
+def _build_prompt(question: str, context: str) -> str:
+    return (
+        "Answer using only the context. If the context conflicts, say so.\n\n"
+        f"Context:\n{context}\n\nQuestion: {question}"
+    )
+
+
+def _generate(prompt: str, settings: Settings) -> str:
+    client = OpenAI(
+        base_url=settings.azure_openai_endpoint,
+        api_key=settings.azure_openai_api_key,
+    )
+    response = client.responses.create(
+        model=settings.azure_openai_deployment,
+        input=prompt,
+    )
+    return _answer_text(response)
+
+
 def _answer_text(response) -> str:
     if hasattr(response, "output_text") and response.output_text:
         return response.output_text
@@ -72,32 +109,8 @@ def _answer_text(response) -> str:
 
 def ask(question: str, settings: Settings | None = None) -> tuple[str, list[dict]]:
     settings = settings or get_settings()
-    if not (
-        settings.azure_openai_endpoint
-        and settings.azure_openai_api_key
-        and settings.azure_openai_deployment
-    ):
-        raise RuntimeError(
-            "Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT"
-        )
+    _require_azure(settings)
 
     _ids, docs, metas = retrieve(question, settings)
-
-    context = "\n\n".join(
-        f"[{i+1}] ({m['document_name']} § {m.get('section', 'body')})\n{d}"
-        for i, (d, m) in enumerate(zip(docs, metas))
-    )
-    prompt = (
-        "Answer using only the context. If the context conflicts, say so.\n\n"
-        f"Context:\n{context}\n\nQuestion: {question}"
-    )
-
-    client = OpenAI(
-        base_url=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-    )
-    response = client.responses.create(
-        model=settings.azure_openai_deployment,
-        input=prompt,
-    )
-    return _answer_text(response), metas
+    prompt = _build_prompt(question, _build_context(docs, metas))
+    return _generate(prompt, settings), metas
