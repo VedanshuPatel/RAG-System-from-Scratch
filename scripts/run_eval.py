@@ -8,11 +8,12 @@ from rag.pipeline import ask, retrieve
 
 
 def main() -> None:
+    """Print retrieval recall; with RUN_LIVE=1 also print answer accuracy."""
     recall_hits = 0
     print("=== Retrieval recall (doc + chunk id) ===")
     for case in CASES:
         ids, _docs, metas = retrieve(case["question"])
-        docs_hit = {m.get("document_name") for m in metas}
+        docs_hit = {meta.get("document_name") for meta in metas}
         doc_ok = case["expected_doc"] in docs_hit
         chunk_ok = bool(set(case["expected_chunk_ids"]) & set(ids))
         ok = doc_ok and chunk_ok
@@ -35,9 +36,9 @@ def main() -> None:
         answer, _sources = ask(case["question"])
         lower = answer.lower()
         ok = True
-        for k in case["expected_answer_keys"]:
-            alts = [a.strip().lower() for a in k.split("|")]
-            if not any(a in lower for a in alts):
+        for key in case["expected_answer_keys"]:
+            alts = [alt.strip().lower() for alt in key.split("|")]
+            if not any(alt in lower for alt in alts):
                 ok = False
                 break
         answer_hits += int(ok)

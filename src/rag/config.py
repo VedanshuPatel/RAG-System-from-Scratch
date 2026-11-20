@@ -19,6 +19,8 @@ VALID_STRATEGIES = frozenset({"structural"})
 
 @dataclass(frozen=True)
 class Settings:
+    """Runtime settings loaded from environment variables."""
+
     chunking_strategy: str
     embedding_model: str
     cross_encoder_model: str
@@ -46,6 +48,7 @@ class Settings:
 
 
 def get_settings() -> Settings:
+    """Load Settings from the environment (and optional .env file)."""
     root = Path(__file__).resolve().parents[2]
     strategy = os.getenv("CHUNKING_STRATEGY", "structural").strip().lower()
     data_dir = Path(os.getenv("DATA_DIR", "data/policies"))

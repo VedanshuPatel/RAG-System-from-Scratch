@@ -11,6 +11,7 @@ from rag.config import Settings, get_settings
 
 
 def get_collection(settings: Settings | None = None):
+    """Return the persistent Chroma collection for the configured index."""
     settings = settings or get_settings()
     embed_fn = SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
     return chromadb.PersistentClient(path=str(settings.chroma_dir)).get_collection(
@@ -20,36 +21,53 @@ def get_collection(settings: Settings | None = None):
 
 
 def retrieve_hybrid(collection, question: str, candidate_n: int):
+    """Merge keyword hits (first) with vector candidates; return ids, docs, metas."""
     vec = collection.query(query_texts=[question], n_results=candidate_n)
     vec_ids, vec_docs, vec_metas = vec["ids"][0], vec["documents"][0], vec["metadatas"][0]
-    by_id = {i: (d, m) for i, d, m in zip(vec_ids, vec_docs, vec_metas)}
+    by_id = {
+        chunk_id: (doc, meta)
+        for chunk_id, doc, meta in zip(vec_ids, vec_docs, vec_metas)
+    }
 
     all_rows = collection.get(include=["documents", "metadatas"])
-    q = question.lower()
+    question_lower = question.lower()
     ordered_ids = []
-    for _id, doc, meta in zip(all_rows["ids"], all_rows["documents"], all_rows["metadatas"]):
-        if q in doc.lower():
-            by_id[_id] = (doc, meta)
-            if _id not in ordered_ids:
-                ordered_ids.append(_id)
-    for _id in vec_ids:
-        if _id not in ordered_ids:
-            ordered_ids.append(_id)
+    for chunk_id, doc, meta in zip(
+        all_rows["ids"], all_rows["documents"], all_rows["metadatas"]
+    ):
+        if question_lower in doc.lower():
+            by_id[chunk_id] = (doc, meta)
+            if chunk_id not in ordered_ids:
+                ordered_ids.append(chunk_id)
+    for chunk_id in vec_ids:
+        if chunk_id not in ordered_ids:
+            ordered_ids.append(chunk_id)
 
-    return ordered_ids, [by_id[i][0] for i in ordered_ids], [by_id[i][1] for i in ordered_ids]
+    return (
+        ordered_ids,
+        [by_id[chunk_id][0] for chunk_id in ordered_ids],
+        [by_id[chunk_id][1] for chunk_id in ordered_ids],
+    )
 
 
 def rerank(question, ids, docs, metas, model_name: str, top_k: int):
+    """Score (question, doc) pairs with a cross-encoder and keep the top_k."""
     reranker = CrossEncoder(model_name)
     scores = reranker.predict([[question, doc] for doc in docs])
     ranked = sorted(
-        zip(ids, docs, metas, scores), key=lambda x: float(x[3]), reverse=True
+        zip(ids, docs, metas, scores),
+        key=lambda row: float(row[3]),
+        reverse=True,
     )[:top_k]
-    return [x[0] for x in ranked], [x[1] for x in ranked], [x[2] for x in ranked]
+    return (
+        [row[0] for row in ranked],
+        [row[1] for row in ranked],
+        [row[2] for row in ranked],
+    )
 
 
 def retrieve(question: str, settings: Settings | None = None):
-    """Hybrid + rerank. Shared by ask() and eval tests."""
+    """Hybrid retrieve then rerank. Shared by ask() and eval tests."""
     settings = settings or get_settings()
     collection = get_collection(settings)
     ids, docs, metas = retrieve_hybrid(collection, question, settings.candidate_n)
@@ -58,7 +76,49 @@ def retrieve(question: str, settings: Settings | None = None):
     )
 
 
+def _require_azure(settings: Settings) -> None:
+    """Raise if Azure OpenAI settings required for generation are missing."""
+    if not (
+        settings.azure_openai_endpoint
+        and settings.azure_openai_api_key
+        and settings.azure_openai_deployment
+    ):
+        raise RuntimeError(
+            "Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT"
+        )
+
+
+def _build_context(docs: list[str], metas: list[dict]) -> str:
+    """Format retrieved chunks into a numbered context block for the prompt."""
+    return "\n\n".join(
+        f"[{index + 1}] ({meta['document_name']} § {meta.get('section', 'body')})\n{doc}"
+        for index, (doc, meta) in enumerate(zip(docs, metas))
+    )
+
+
+def _build_prompt(question: str, context: str) -> str:
+    """Build the grounded generation prompt from context and question."""
+    return (
+        "Answer using only the context. If the context conflicts, say so.\n\n"
+        f"Context:\n{context}\n\nQuestion: {question}"
+    )
+
+
+def _generate(prompt: str, settings: Settings) -> str:
+    """Call Azure OpenAI and return the answer text."""
+    client = OpenAI(
+        base_url=settings.azure_openai_endpoint,
+        api_key=settings.azure_openai_api_key,
+    )
+    response = client.responses.create(
+        model=settings.azure_openai_deployment,
+        input=prompt,
+    )
+    return _answer_text(response)
+
+
 def _answer_text(response) -> str:
+    """Extract plain text from an OpenAI responses API payload."""
     if hasattr(response, "output_text") and response.output_text:
         return response.output_text
     parts = []
@@ -71,33 +131,10 @@ def _answer_text(response) -> str:
 
 
 def ask(question: str, settings: Settings | None = None) -> tuple[str, list[dict]]:
+    """Retrieve context, generate an answer, and return (answer, source metas)."""
     settings = settings or get_settings()
-    if not (
-        settings.azure_openai_endpoint
-        and settings.azure_openai_api_key
-        and settings.azure_openai_deployment
-    ):
-        raise RuntimeError(
-            "Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT"
-        )
+    _require_azure(settings)
 
     _ids, docs, metas = retrieve(question, settings)
-
-    context = "\n\n".join(
-        f"[{i+1}] ({m['document_name']} § {m.get('section', 'body')})\n{d}"
-        for i, (d, m) in enumerate(zip(docs, metas))
-    )
-    prompt = (
-        "Answer using only the context. If the context conflicts, say so.\n\n"
-        f"Context:\n{context}\n\nQuestion: {question}"
-    )
-
-    client = OpenAI(
-        base_url=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-    )
-    response = client.responses.create(
-        model=settings.azure_openai_deployment,
-        input=prompt,
-    )
-    return _answer_text(response), metas
+    prompt = _build_prompt(question, _build_context(docs, metas))
+    return _generate(prompt, settings), metas

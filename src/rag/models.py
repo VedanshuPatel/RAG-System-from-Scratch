@@ -19,9 +19,11 @@ class Chunk:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def with_id(self, chunk_id: str) -> Chunk:
+        """Set chunk_id in place and return self for chaining."""
         self.chunk_id = chunk_id
         return self
 
     def attribution(self) -> str:
+        """Human-readable source label: ``document § section``."""
         section = self.section or "body"
         return f"{self.document_name} § {section}"

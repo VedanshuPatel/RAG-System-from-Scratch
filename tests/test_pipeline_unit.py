@@ -13,19 +13,21 @@ class FakeCollection:
         self.vec_ids = vec_ids
 
     def query(self, query_texts, n_results):
-        by_id = {i: (d, m) for i, d, m in self.rows}
-        ids = [i for i in self.vec_ids if i in by_id][:n_results]
+        by_id = {
+            chunk_id: (doc, meta) for chunk_id, doc, meta in self.rows
+        }
+        ids = [chunk_id for chunk_id in self.vec_ids if chunk_id in by_id][:n_results]
         return {
             "ids": [ids],
-            "documents": [[by_id[i][0] for i in ids]],
-            "metadatas": [[by_id[i][1] for i in ids]],
+            "documents": [[by_id[chunk_id][0] for chunk_id in ids]],
+            "metadatas": [[by_id[chunk_id][1] for chunk_id in ids]],
         }
 
     def get(self, include=None):
         return {
-            "ids": [r[0] for r in self.rows],
-            "documents": [r[1] for r in self.rows],
-            "metadatas": [r[2] for r in self.rows],
+            "ids": [row[0] for row in self.rows],
+            "documents": [row[1] for row in self.rows],
+            "metadatas": [row[2] for row in self.rows],
         }
 
 
@@ -50,7 +52,7 @@ def test_rerank_orders_by_score(monkeypatch):
             self.model_name = model_name
 
         def predict(self, pairs):
-            return [2.0 if "best" in p[1] else 0.1 for p in pairs]
+            return [2.0 if "best" in pair[1] else 0.1 for pair in pairs]
 
     monkeypatch.setattr(pipeline, "CrossEncoder", FakeCE)
     ids, docs, _metas = pipeline.rerank(
@@ -83,17 +85,17 @@ def test_answer_text_stringifies_output_when_empty():
 
 
 def test_ask_requires_azure_settings():
-    s = make_settings(
+    settings = make_settings(
         azure_openai_endpoint=None,
         azure_openai_api_key=None,
         azure_openai_deployment=None,
     )
     with pytest.raises(RuntimeError, match="AZURE_OPENAI"):
-        pipeline.ask("q", settings=s)
+        pipeline.ask("q", settings=settings)
 
 
 def test_ask_returns_answer_and_metas(monkeypatch):
-    s = make_settings(
+    settings = make_settings(
         azure_openai_endpoint="https://example.openai.azure.com/openai/v1",
         azure_openai_api_key="key",
         azure_openai_deployment="gpt",
@@ -103,7 +105,7 @@ def test_ask_returns_answer_and_metas(monkeypatch):
     monkeypatch.setattr(
         pipeline,
         "retrieve",
-        lambda q, settings=None: (["id1"], ["context doc"], metas),
+        lambda question, settings=None: (["id1"], ["context doc"], metas),
     )
 
     fake_client = MagicMock()
@@ -113,14 +115,14 @@ def test_ask_returns_answer_and_metas(monkeypatch):
     )
     monkeypatch.setattr(pipeline, "OpenAI", lambda **kwargs: fake_client)
 
-    answer, sources = pipeline.ask("meal limit?", settings=s)
+    answer, sources = pipeline.ask("meal limit?", settings=settings)
     assert "$50" in answer
     assert sources == metas
     fake_client.responses.create.assert_called_once()
 
 
 def test_retrieve_wires_hybrid_and_rerank(monkeypatch):
-    s = make_settings(top_k=1, candidate_n=5)
+    settings = make_settings(top_k=1, candidate_n=5)
     monkeypatch.setattr(pipeline, "get_collection", lambda settings=None: "coll")
     monkeypatch.setattr(
         pipeline,
@@ -140,12 +142,13 @@ def test_retrieve_wires_hybrid_and_rerank(monkeypatch):
             [{"document_name": "b.md"}],
         ),
     )
-    ids, docs, _metas = pipeline.retrieve("q", settings=s)
+    ids, docs, _metas = pipeline.retrieve("q", settings=settings)
     assert ids == ["2"]
     assert docs == ["d2"]
 
+
 def test_get_collection_uses_chroma(monkeypatch):
-    s = make_settings(collection_name="policies", chroma_dir="/tmp/chroma-test")
+    settings = make_settings(collection_name="policies", chroma_dir="/tmp/chroma-test")
     fake_collection = object()
     fake_client = MagicMock()
     fake_client.get_collection.return_value = fake_collection
@@ -161,7 +164,7 @@ def test_get_collection_uses_chroma(monkeypatch):
         lambda path: fake_client,
     )
 
-    out = pipeline.get_collection(s)
+    out = pipeline.get_collection(settings)
     assert out is fake_collection
     fake_client.get_collection.assert_called_once_with(
         name="policies",
@@ -170,8 +173,8 @@ def test_get_collection_uses_chroma(monkeypatch):
 
 
 def test_get_collection_defaults_settings(monkeypatch):
-    s = make_settings()
-    monkeypatch.setattr(pipeline, "get_settings", lambda: s)
+    settings = make_settings()
+    monkeypatch.setattr(pipeline, "get_settings", lambda: settings)
     fake_client = MagicMock()
     fake_client.get_collection.return_value = "coll"
     monkeypatch.setattr(

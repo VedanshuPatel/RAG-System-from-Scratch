@@ -7,21 +7,22 @@ from rag.pipeline import ask, retrieve
 
 
 def _keys_present(text: str, keys: list[str]) -> bool:
+    """Return True if every key (or one of its ``|`` alternatives) appears in text."""
     lower = text.lower()
-    for k in keys:
-        alts = [a.strip().lower() for a in k.split("|")]
-        if not any(a in lower for a in alts):
+    for key in keys:
+        alts = [alt.strip().lower() for alt in key.split("|")]
+        if not any(alt in lower for alt in alts):
             return False
     return True
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
+@pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
 def test_retriever_recall(case):
     ids, _docs, metas = retrieve(case["question"])
     assert ids, f"No results for {case['id']}"
 
-    docs_hit = {m.get("document_name") for m in metas}
+    docs_hit = {meta.get("document_name") for meta in metas}
     assert case["expected_doc"] in docs_hit, (
         f"[{case['id']}] expected doc {case['expected_doc']} not in {sorted(docs_hit)}"
     )
@@ -33,7 +34,7 @@ def test_retriever_recall(case):
 
 
 @pytest.mark.live
-@pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
+@pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
 def test_generator_answer_keys(case):
     if os.getenv("RUN_LIVE", "0") != "1":
         pytest.skip("Set RUN_LIVE=1 to run generator tests")
