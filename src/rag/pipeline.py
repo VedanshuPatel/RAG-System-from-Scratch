@@ -11,6 +11,7 @@ from rag.config import Settings, get_settings
 
 
 def get_collection(settings: Settings | None = None):
+    """Return the persistent Chroma collection for the configured index."""
     settings = settings or get_settings()
     embed_fn = SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
     return chromadb.PersistentClient(path=str(settings.chroma_dir)).get_collection(
@@ -20,6 +21,7 @@ def get_collection(settings: Settings | None = None):
 
 
 def retrieve_hybrid(collection, question: str, candidate_n: int):
+    """Merge keyword hits (first) with vector candidates; return ids, docs, metas."""
     vec = collection.query(query_texts=[question], n_results=candidate_n)
     vec_ids, vec_docs, vec_metas = vec["ids"][0], vec["documents"][0], vec["metadatas"][0]
     by_id = {
@@ -49,6 +51,7 @@ def retrieve_hybrid(collection, question: str, candidate_n: int):
 
 
 def rerank(question, ids, docs, metas, model_name: str, top_k: int):
+    """Score (question, doc) pairs with a cross-encoder and keep the top_k."""
     reranker = CrossEncoder(model_name)
     scores = reranker.predict([[question, doc] for doc in docs])
     ranked = sorted(
@@ -64,7 +67,7 @@ def rerank(question, ids, docs, metas, model_name: str, top_k: int):
 
 
 def retrieve(question: str, settings: Settings | None = None):
-    """Hybrid + rerank. Shared by ask() and eval tests."""
+    """Hybrid retrieve then rerank. Shared by ask() and eval tests."""
     settings = settings or get_settings()
     collection = get_collection(settings)
     ids, docs, metas = retrieve_hybrid(collection, question, settings.candidate_n)
@@ -74,6 +77,7 @@ def retrieve(question: str, settings: Settings | None = None):
 
 
 def _require_azure(settings: Settings) -> None:
+    """Raise if Azure OpenAI settings required for generation are missing."""
     if not (
         settings.azure_openai_endpoint
         and settings.azure_openai_api_key
@@ -85,6 +89,7 @@ def _require_azure(settings: Settings) -> None:
 
 
 def _build_context(docs: list[str], metas: list[dict]) -> str:
+    """Format retrieved chunks into a numbered context block for the prompt."""
     return "\n\n".join(
         f"[{index + 1}] ({meta['document_name']} § {meta.get('section', 'body')})\n{doc}"
         for index, (doc, meta) in enumerate(zip(docs, metas))
@@ -92,6 +97,7 @@ def _build_context(docs: list[str], metas: list[dict]) -> str:
 
 
 def _build_prompt(question: str, context: str) -> str:
+    """Build the grounded generation prompt from context and question."""
     return (
         "Answer using only the context. If the context conflicts, say so.\n\n"
         f"Context:\n{context}\n\nQuestion: {question}"
@@ -99,6 +105,7 @@ def _build_prompt(question: str, context: str) -> str:
 
 
 def _generate(prompt: str, settings: Settings) -> str:
+    """Call Azure OpenAI and return the answer text."""
     client = OpenAI(
         base_url=settings.azure_openai_endpoint,
         api_key=settings.azure_openai_api_key,
@@ -111,6 +118,7 @@ def _generate(prompt: str, settings: Settings) -> str:
 
 
 def _answer_text(response) -> str:
+    """Extract plain text from an OpenAI responses API payload."""
     if hasattr(response, "output_text") and response.output_text:
         return response.output_text
     parts = []
@@ -123,6 +131,7 @@ def _answer_text(response) -> str:
 
 
 def ask(question: str, settings: Settings | None = None) -> tuple[str, list[dict]]:
+    """Retrieve context, generate an answer, and return (answer, source metas)."""
     settings = settings or get_settings()
     _require_azure(settings)
 

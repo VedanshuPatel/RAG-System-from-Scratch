@@ -8,6 +8,7 @@ from rag.pipeline import ask, retrieve
 
 
 def main() -> None:
+    """Print retrieval recall; with RUN_LIVE=1 also print answer accuracy."""
     recall_hits = 0
     print("=== Retrieval recall (doc + chunk id) ===")
     for case in CASES:

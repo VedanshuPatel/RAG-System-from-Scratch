@@ -16,6 +16,7 @@ _REGISTRY: dict[str, Chunker] = {
 
 
 def get_chunker(strategy: str) -> Chunker:
+    """Return the chunking callable registered for ``strategy``."""
     key = strategy.strip().lower()
     if key not in VALID_STRATEGIES or key not in _REGISTRY:
         raise ValueError(

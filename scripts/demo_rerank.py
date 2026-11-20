@@ -10,6 +10,7 @@ QUERY = "What is the current travel meal limit?"
 
 
 def main() -> None:
+    """Show top candidates before and after cross-encoder reranking."""
     settings = get_settings()
     embed_fn = SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
     collection = chromadb.PersistentClient(path=str(settings.chroma_dir)).get_collection(

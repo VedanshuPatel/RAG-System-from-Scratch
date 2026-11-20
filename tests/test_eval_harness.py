@@ -7,6 +7,7 @@ from rag.pipeline import ask, retrieve
 
 
 def _keys_present(text: str, keys: list[str]) -> bool:
+    """Return True if every key (or one of its ``|`` alternatives) appears in text."""
     lower = text.lower()
     for key in keys:
         alts = [alt.strip().lower() for alt in key.split("|")]

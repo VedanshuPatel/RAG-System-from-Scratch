@@ -9,6 +9,7 @@ QUERY = "EX-MEAL-50"
 
 
 def main() -> None:
+    """Compare vector-only vs keyword-first hybrid ranking for EX-MEAL-50."""
     settings = get_settings()
     embed_fn = SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
     collection = chromadb.PersistentClient(path=str(settings.chroma_dir)).get_collection(

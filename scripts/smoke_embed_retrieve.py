@@ -10,6 +10,7 @@ DB_DIR = ROOT / "data" / "chroma_smoke"
 
 
 def main() -> None:
+    """Smoke-test embed → store → query against a temporary Chroma path."""
     DB_DIR.mkdir(parents=True, exist_ok=True)
 
     embed_fn = SentenceTransformerEmbeddingFunction(

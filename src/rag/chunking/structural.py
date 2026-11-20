@@ -10,6 +10,7 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 
 
 def _split_oversized(text: str, chunk_size: int, overlap: int) -> list[str]:
+    """Split text into overlapping windows of at most ``chunk_size`` characters."""
     if len(text) <= chunk_size:
         return [text]
     parts: list[str] = []
@@ -30,6 +31,7 @@ def structural_chunk(
     chunk_size: int = 1800,
     overlap: int = 200,
 ) -> list[Chunk]:
+    """Chunk markdown by heading sections, then window oversized sections."""
     matches = list(_HEADING.finditer(text))
     sections: list[tuple[str, str]] = []
 

@@ -12,6 +12,7 @@ from rag.config import Settings, get_settings
 
 
 def _reset_collection(settings: Settings):
+    """Delete and recreate the Chroma collection (fresh ingest each run)."""
     settings.chroma_dir.mkdir(parents=True, exist_ok=True)
     embed_fn = SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
     client = chromadb.PersistentClient(path=str(settings.chroma_dir))
@@ -30,6 +31,7 @@ def _reset_collection(settings: Settings):
 def _collect_chunks(
     files: list[Path], settings: Settings
 ) -> tuple[list[str], list[str], list[dict]]:
+    """Chunk each markdown file and return parallel ids, texts, and metadatas."""
     chunker = get_chunker(settings.chunking_strategy)
     ids, docs, metas = [], [], []
     for path in files:
@@ -54,6 +56,7 @@ def _collect_chunks(
 
 
 def main() -> None:
+    """Ingest all ``*.md`` files under ``DATA_DIR`` into Chroma."""
     settings = get_settings()
     files = sorted(settings.data_dir.glob("*.md"))
     if not files:

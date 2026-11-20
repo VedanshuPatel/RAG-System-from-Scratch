@@ -2,6 +2,7 @@ from rag.config import Settings
 
 
 def make_settings(**kwargs) -> Settings:
+    """Build a Settings instance for tests; kwargs override defaults."""
     base = {
         "chunking_strategy": "structural",
         "embedding_model": "embed-model",
