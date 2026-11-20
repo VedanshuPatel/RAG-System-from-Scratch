@@ -39,21 +39,25 @@ def structural_chunk(
         preamble = text[: matches[0].start()].strip()
         if preamble:
             sections.append(("preamble", preamble))
-        for i, match in enumerate(matches):
+        for index, match in enumerate(matches):
             title = match.group(2).strip()
             start = match.end()
-            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+            end = (
+                matches[index + 1].start()
+                if index + 1 < len(matches)
+                else len(text)
+            )
             body = text[start:end].strip()
             section_text = f"{match.group(0).strip()}\n{body}".strip()
             sections.append((title, section_text))
 
     chunks: list[Chunk] = []
-    idx = 0
+    chunk_index = 0
     for section, section_text in sections:
         for part in _split_oversized(section_text, chunk_size, overlap):
             if not part.strip():
                 continue
-            chunk_id = f"{document_name}::structural::{idx}"
+            chunk_id = f"{document_name}::structural::{chunk_index}"
             chunks.append(
                 Chunk(
                     text=part,
@@ -65,5 +69,5 @@ def structural_chunk(
                     metadata={"strategy": "structural"},
                 )
             )
-            idx += 1
+            chunk_index += 1
     return chunks

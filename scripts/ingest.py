@@ -40,13 +40,13 @@ def _collect_chunks(
             chunk_size=settings.chunk_size,
             overlap=settings.chunk_overlap,
         )
-        for c in chunks:
-            ids.append(c.chunk_id)
-            docs.append(c.text)
+        for chunk in chunks:
+            ids.append(chunk.chunk_id)
+            docs.append(chunk.text)
             metas.append(
                 {
-                    "document_name": c.document_name,
-                    "section": c.section or "body",
+                    "document_name": chunk.document_name,
+                    "section": chunk.section or "body",
                     "strategy": settings.chunking_strategy,
                 }
             )

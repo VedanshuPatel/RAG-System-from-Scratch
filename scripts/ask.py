@@ -14,8 +14,8 @@ def main() -> None:
     print("Answer:")
     print(answer)
     print("\nSources:")
-    for m in sources:
-        print(f"- {m['document_name']} § {m.get('section', 'body')}")
+    for meta in sources:
+        print(f"- {meta['document_name']} § {meta.get('section', 'body')}")
 
 
 if __name__ == "__main__":
